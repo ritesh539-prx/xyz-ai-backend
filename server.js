@@ -1,9 +1,9 @@
-require('../xyz-ai-backend/bot.js');
-require('dotenv')config();
+
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import './bot.cjs';
 
 // .env file se variables load karne ke liye
 dotenv.config();
