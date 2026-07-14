@@ -3,10 +3,11 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
-import './bot.cjs';
+
 
 // .env file se variables load karne ke liye
 dotenv.config();
+import './bot.cjs';
 
 const app = express();
 
