@@ -1,4 +1,5 @@
 require('../xyz-ai-backend/bot.js');
+require('dotenv')config();
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';

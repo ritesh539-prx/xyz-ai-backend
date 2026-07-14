@@ -3,8 +3,8 @@ const { Telegraf } = require('telegraf');
 const Groq = require('groq-sdk'); // Google gaya, ab Groq aaya!
 
 // ==================== TOKENS & KEYS ====================
-const BOT_TOKEN = TELE_BOT_KEY;
-const GROQ_API_KEY = GROQ_API_KEY; // Yahan Groq ki key daalna
+const BOT_TOKEN = process.env.TELE_BOT_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY; // Yahan Groq ki key daalna
 // =======================================================
 
 
