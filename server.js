@@ -1,3 +1,4 @@
+require('../xyz-ai-backend/bot.js');
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
