@@ -8,39 +8,29 @@ dotenv.config();
 
 const app = express();
 
-// CORS configure kiya taaki local aur live frontend dono se request aaye toh block na ho
 app.use(cors());
 app.use(express.json());
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 console.log("LOADED KEY:", GROQ_API_KEY ? "HAAN, MIL GAYI!" : "NAHI MILI, UNDEFINED HAI!");
 
-// 🧠 GLOBAL MEMORY SYSTEM (Vercel Serverless safe)
-global.globalChatHistory = global.globalChatHistory || [
-    {
-        role: "system",
-        content: "You are a helpful, friendly AI assistant. Always remember the context of the conversation and refer to previous messages when appropriate."
-    }
-];
-
 // XYZ API End-point
 app.post('/xyz-api/chat', async (req, res) => {
     try {
-        const { message } = req.body;
+        // Frontend se message aur poori history dono aa rahi hain
+        const { message, history } = req.body;
 
         if (!message) {
             return res.status(400).json({ error: "Message is required" });
         }
 
-        // 1. User ka naya message global history mein add karo
-        global.globalChatHistory.push({ role: "user", content: message });
+        // Agar frontend se history nahi aayi (fallback), toh sirf current message ka array banao
+        const messagesToSend = history || [
+            { role: "system", content: "You are a helpful AI assistant." },
+            { role: "user", content: message }
+        ];
 
-        // 2. Memory limit: Pichle ~15 messages tak dhyan mein rakhega (Server crash se bachne ke liye)
-        if (global.globalChatHistory.length > 15) {
-            global.globalChatHistory.splice(1, 2); // System prompt ko chhod kar purane messages hatao
-        }
-
-        // 3. Groq API ko direct curl style fetch call karo
+        // Direct fetch call to Groq API with full context
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -49,7 +39,7 @@ app.post('/xyz-api/chat', async (req, res) => {
             },
             body: JSON.stringify({
                 model: "llama3-8b-8192",
-                messages: global.globalChatHistory
+                messages: messagesToSend // Frontend wala updated array bhej rahe hain
             })
         });
 
@@ -62,10 +52,7 @@ app.post('/xyz-api/chat', async (req, res) => {
 
         const aiResponse = data.choices[0].message.content;
 
-        // 4. AI ka response bhi memory history mein add karo
-        global.globalChatHistory.push({ role: "assistant", content: aiResponse });
-
-        // 5. Response return karo frontend ko
+        // Response frontend ko return karo
         return res.json({ reply: aiResponse });
 
     } catch (error) {
