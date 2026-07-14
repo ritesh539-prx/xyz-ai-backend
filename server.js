@@ -1,13 +1,15 @@
-
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
-
-// .env file se variables load karne ke liye
+// 1. Sabse pehle .env variables ko load karo taaki poore project ko keys mil sakein
 dotenv.config();
-import './bot.cjs';
+
+// 2. Ab jab keys load ho chuki hain, tab bot file ko dynamic import karo
+import('./bot.cjs')
+  .then(() => console.log("🤖 Bot file loaded successfully!"))
+  .catch((err) => console.error("❌ Bot load karne mein dikkat:", err));
 
 const app = express();
 
@@ -20,20 +22,17 @@ console.log("LOADED KEY:", GROQ_API_KEY ? "HAAN, MIL GAYI!" : "NAHI MILI, UNDEFI
 // XYZ API End-point
 app.post('/xyz-api/chat', async (req, res) => {
     try {
-        // Frontend se message aur poori history dono aa rahi hain
         const { message, history } = req.body;
 
         if (!message) {
             return res.status(400).json({ error: "Message is required" });
         }
 
-        // Agar frontend se history nahi aayi (fallback), toh sirf current message ka array banao
         const messagesToSend = history || [
             { role: "system", content: "You are a helpful AI assistant." },
             { role: "user", content: message }
         ];
 
-        // Direct fetch call to Groq API with full context
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -42,7 +41,7 @@ app.post('/xyz-api/chat', async (req, res) => {
             },
             body: JSON.stringify({
                 model: 'llama-3.1-8b-instant',
-                messages: messagesToSend // Frontend wala updated array bhej rahe hain
+                messages: messagesToSend 
             })
         });
 
@@ -54,8 +53,6 @@ app.post('/xyz-api/chat', async (req, res) => {
         }
 
         const aiResponse = data.choices[0].message.content;
-
-        // Response frontend ko return karo
         return res.json({ reply: aiResponse });
 
     } catch (error) {
