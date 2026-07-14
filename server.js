@@ -16,59 +16,53 @@ app.use(express.json());
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 console.log("LOADED KEY:", GROQ_API_KEY ? "HAAN, MIL GAYI!" : "NAHI MILI, UNDEFINED HAI!");
 
+let chatHistory = [
+    {
+        role: "system",
+        content: "You are a helpful, friendly AI assistant. Always remember the context of the conversation and refer to previous messages when appropriate."
+    }
+];
 // Yeh hai tumhari apni XYZ API End-point
 app.post('/xyz-api/chat', async (req, res) => {
     try {
-        const userMessage = req.body.message;
+        const { message } = req.body;
 
-        if (!userMessage) {
-            return res.status(400).json({ error: "Bhai message toh bhejo!" });
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
         }
 
-        // 🔥 YAHAN TUM APNA AI CONTROL KAR SAKTE HO (SYSTEM PROMPT)
-        const systemPrompt = "Tum ek solid, cool aur bohot hi helpful AI assistant ho. Har baat ka jawab bilkul simple, chhota aur dosto wale andaaz (Hinglish) mein dena.";
+        // 1. User ka naya message history mein add karo
+        chatHistory.push({ role: "user", content: message });
 
-        // Groq API ko standard format mein request bhejna
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: 'llama-3.1-8b-instant', // Fast aur optimized model
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userMessage }
-                ],
-                temperature: 0.7
-            })
+        // 2. Memory limits set karo (Optional: taaki history bohot badi hokar crash na ho, hum last 15-20 messages rakhte hain)
+        if (chatHistory.length > 20) {
+            // System prompt ko chhod kar sabse purane user/assistant message ko hata do
+            chatHistory.splice(1, 2); 
+        }
+
+        // 3. Poori history ke sath Groq API ko call karo
+        const chatCompletion = await groq.chat.completions.create({
+            messages: chatHistory, // Ab bas single message nahi, poori chatHistory ja rahi hai!
+            model: "llama3-8b-8192", // Jo bhi tumhara default model tha
         });
 
-        const groqData = await response.json();
-        
-        // 🔍 Agar Groq ne koi error bheja hai toh use terminal par print karo
-        if (groqData.error) {
-            console.error("❌ Groq API Error:", groqData.error);
-            return res.status(400).json({ error: groqData.error.message });
-        }
+        const aiResponse = chatCompletion.choices[0].message.content;
 
-        // Safe tareeqe se choices check karo
-        if (!groqData.choices || groqData.choices.length === 0) {
-            console.error("❌ Unexpected Groq Response:", groqData);
-            return res.status(500).json({ error: "Groq se choices array nahi mila!" });
-        }
-        
-        // Groq se aaya hua content nikalna
-        const aiReply = groqData.choices[0].message.content;
-        
-        // Frontend ko reply wapas bhej dena
-        res.json({ reply: aiReply });
+        // 4. AI ka response bhi history mein add karo taaki agli baar use apna jawab bhi yaad rahe
+        chatHistory.push({ role: "assistant", content: aiResponse });
+
+        // 5. Response send karo frontend ko
+        res.json({ reply: aiResponse });
 
     } catch (error) {
-        console.error("Server Error:", error);
-        res.status(500).json({ error: "Arre bhai server par kuch phat gaya!" });
+        console.error("Error in chat:", error);
+        res.status(500).json({ error: "Something went wrong in the backend" });
     }
+});
+
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
 
 app.listen(PORT, () => {
