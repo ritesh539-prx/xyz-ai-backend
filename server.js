@@ -7,22 +7,23 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = 8000;
+const PORT = process.env.PORT || 8000; // Ek hi baar port define kiya
 
-// CORS allow karna zaroori hai taaki GitHub Pages tumhare laptop se baat kar sake
 app.use(cors());
 app.use(express.json());
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 console.log("LOADED KEY:", GROQ_API_KEY ? "HAAN, MIL GAYI!" : "NAHI MILI, UNDEFINED HAI!");
 
+// 🧠 MEMORY SYSTEM: Yeh array conversation yaad rakhega
 let chatHistory = [
     {
         role: "system",
         content: "You are a helpful, friendly AI assistant. Always remember the context of the conversation and refer to previous messages when appropriate."
     }
 ];
-// Yeh hai tumhari apni XYZ API End-point
+
+// XYZ API End-point
 app.post('/xyz-api/chat', async (req, res) => {
     try {
         const { message } = req.body;
@@ -34,21 +35,34 @@ app.post('/xyz-api/chat', async (req, res) => {
         // 1. User ka naya message history mein add karo
         chatHistory.push({ role: "user", content: message });
 
-        // 2. Memory limits set karo (Optional: taaki history bohot badi hokar crash na ho, hum last 15-20 messages rakhte hain)
+        // 2. Memory limit (Takriban pichle 20 messages dhyan mein rakhega)
         if (chatHistory.length > 20) {
-            // System prompt ko chhod kar sabse purane user/assistant message ko hata do
-            chatHistory.splice(1, 2); 
+            chatHistory.splice(1, 2); // Purane messages ko clear karo (system message ko chhod kar)
         }
 
-        // 3. Poori history ke sath Groq API ko call karo
-        const chatCompletion = await groq.chat.completions.create({
-            messages: chatHistory, // Ab bas single message nahi, poori chatHistory ja rahi hai!
-            model: "llama3-8b-8192", // Jo bhi tumhara default model tha
+        // 3. fetch se Groq API ko direct call karo
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama3-8b-8192",
+                messages: chatHistory // Poori chat history bhej rahe hain
+            })
         });
 
-        const aiResponse = chatCompletion.choices[0].message.content;
+        const data = await response.json();
 
-        // 4. AI ka response bhi history mein add karo taaki agli baar use apna jawab bhi yaad rahe
+        if (!response.ok) {
+            console.error("Groq API Error:", data);
+            return res.status(response.status).json({ error: "Failed to communicate with Groq API" });
+        }
+
+        const aiResponse = data.choices[0].message.content;
+
+        // 4. AI ka response bhi history mein add karo
         chatHistory.push({ role: "assistant", content: aiResponse });
 
         // 5. Response send karo frontend ko
@@ -60,11 +74,7 @@ app.post('/xyz-api/chat', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 8000;
+// Server ko sirf ek hi baar listen karwana hai
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-app.listen(PORT, () => {
-    console.log(`🚀 Your XYZ API is running at http://localhost:${PORT}`);
+    console.log(`🚀 Your XYZ API is running on port ${PORT}`);
 });
