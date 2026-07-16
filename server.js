@@ -3,13 +3,8 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
-// 1. Sabse pehle .env variables ko load karo taaki poore project ko keys mil sakein
+// 1. Load Environment Variables
 dotenv.config();
-
-// 2. Ab jab keys load ho chuki hain, tab bot file ko dynamic import karo
-import('./bot.cjs')
-  .then(() => console.log("🤖 Bot file loaded successfully!"))
-  .catch((err) => console.error("❌ Bot load karne mein dikkat:", err));
 
 const app = express();
 
@@ -19,7 +14,7 @@ app.use(express.json());
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 console.log("LOADED KEY:", GROQ_API_KEY ? "HAAN, MIL GAYI!" : "NAHI MILI, UNDEFINED HAI!");
 
-// XYZ API End-point
+// XYZ API End-point (Website handle karne ke liye)
 app.post('/xyz-api/chat', async (req, res) => {
     try {
         const { message, history } = req.body;
@@ -28,11 +23,13 @@ app.post('/xyz-api/chat', async (req, res) => {
             return res.status(400).json({ error: "Message is required" });
         }
 
+        // Frontend ki history use karo ya default fallback array
         const messagesToSend = history || [
             { role: "system", content: "You are a helpful AI assistant." },
             { role: "user", content: message }
         ];
 
+        // Fetch Request to Groq API
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -61,13 +58,13 @@ app.post('/xyz-api/chat', async (req, res) => {
     }
 });
 
-// Vercel deployment ke liye app export karna zaroori hai
+// Vercel handles serverless exports automatically
 export default app;
 
-// Local Environment Testing Setup
+// Local testing handle karne ke liye
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 8000;
     app.listen(PORT, () => {
-        console.log(`🚀 Local test running on port ${PORT}`);
+        console.log(`🚀 Website API local test running on port ${PORT}`);
     });
 }
